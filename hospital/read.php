@@ -28,7 +28,7 @@ body { font-family: 'Arial', sans-serif; margin:0; background-color: #eef4f7; di
 header { background:#0077b6; color:#fff; padding:15px; border-radius:8px; margin-bottom:20px; }
 
 table { width:100%; background:white; border-collapse:collapse; border-radius:10px; overflow:hidden; }
-th, td { padding:12px; border-bottom:1px solid #ddd; }
+th, td { padding:12px; border-bottom:1px solid #ddd; text-align:left; }
 th { background:#0096c7; color:white; }
 tr:hover { background-color:#caf0f8; }
 
@@ -41,7 +41,7 @@ tr:hover { background-color:#caf0f8; }
 .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:2000; }
 .modal-content { background:#fff; padding:25px; width:420px; border-radius:12px; box-shadow:0 0 15px rgba(0,0,0,0.3); text-align:center; }
 .modal-content input { width:90%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #ccc; }
-.btn-guardar { background:#2b9348; border:none; color:white; padding:10px; width:90%; border-radius:6px; cursor:pointer; margin-top:10px; }
+.btn-guardar { background:#2b9348; border:none; color:white; padding:10px; width:90%; border-radius:6px; cursor:pointer; margin-top:10px; font-size:16px; font-weight:bold; }
 .cerrar { float:right; font-size:22px; cursor:pointer; font-weight:bold; }
 .mensaje { font-weight:bold; margin-top:10px; display:none; padding:10px; border-radius:5px; text-align:center; }
 </style>
@@ -52,7 +52,7 @@ tr:hover { background-color:#caf0f8; }
 <div class="sidebar">
     <h2>HOSPITAL</h2>
     <a href="read.php">👨‍⚕️ Médicos</a>
-    <a href="read_pacientes.php">🧑 Pacientes</a>
+    <a href="pacientes/read_pacientes.php">🧑 Pacientes</a>
     <a href="read_citas.php">📅 Citas</a>
 
     <?php if ($_SESSION['rol'] === 'admin') { ?>
@@ -85,7 +85,6 @@ tr:hover { background-color:#caf0f8; }
     </thead>
     <tbody id="tabla-medicos"></tbody>
 </table>
-
 </div>
 
 <!-- Modal Insertar -->
@@ -97,7 +96,7 @@ tr:hover { background-color:#caf0f8; }
         <form id="formInsertar">
             <input type="text" name="nombre" placeholder="Nombre" required>
             <input type="text" name="especialidad" placeholder="Especialidad" required>
-            <input type="number" name="telefono" placeholder="Teléfono" required>
+            <input type="text" name="telefono" placeholder="Teléfono" required>
             <input type="email" name="correo" placeholder="Correo" required>
             <button type="submit" class="btn-guardar">Guardar</button>
         </form>
@@ -114,121 +113,131 @@ tr:hover { background-color:#caf0f8; }
 </div>
 
 <script>
-// Cargar médicos
-async function cargarMedicos() {
-    const res = await fetch("get_medicos.php");
-    const data = await res.json();
-    const tabla = document.querySelector("#tabla-medicos");
-    tabla.innerHTML = "";
+document.addEventListener("DOMContentLoaded", function() {
 
-    data.forEach(m => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td>${m.nombre}</td>
-            <td>${m.especialidad}</td>
-            <td>${m.telefono}</td>
-            <td>${m.correo}</td>
-            <?php if ($_SESSION['rol'] === 'admin') { ?>
-            <td>
-                <button class="btn btn-editar" onclick="abrirModalEditar(${m.id})">Editar</button>
-                <button class="btn btn-eliminar" onclick="eliminarMedico(${m.id})">Eliminar</button>
-            </td>
-            <?php } ?>
-        `;
-        tr.id = "fila-"+m.id;
-        tabla.appendChild(tr);
-    });
-}
-document.addEventListener("DOMContentLoaded", cargarMedicos);
-
-// Modal Insertar
-function abrirModalInsertar(){ document.getElementById("modalInsertar").style.display="flex"; }
-function cerrarModalInsertar(){ document.getElementById("modalInsertar").style.display="none"; }
-
-// Insertar médico
-document.getElementById("formInsertar").addEventListener("submit", async function(e){
-    e.preventDefault();
-    const formData = new FormData(this);
-    const res = await fetch("insertar_medico.php",{ method:"POST", body: formData });
-    const data = await res.json();
-    const msg = document.getElementById("mensajeInsertar");
-    msg.style.display="block";
-
-    if(data.status==="success"){
-        msg.style.backgroundColor="#d4edda";
-        msg.style.color="#155724";
-        msg.textContent="✅ "+data.message;
-        this.reset();
-        cargarMedicos();
-        setTimeout(()=>{ msg.style.display="none"; cerrarModalInsertar(); },1500);
-    } else {
-        msg.style.backgroundColor="#f8d7da";
-        msg.style.color="#721c24";
-        msg.textContent="❌ "+data.message;
-    }
-});
-
-// Modal Editar
-async function abrirModalEditar(id){
-    const modal = document.getElementById("modalEditar");
-    const contenido = document.getElementById("contenidoEditar");
-
-    try {
-        const res = await fetch(`form_editar_medico.php?id=${id}`);
-        const html = await res.text();
-        contenido.innerHTML = html;
-        modal.style.display="flex";
-
-        const formEditar = contenido.querySelector("#formEditar");
-        const cerrar = contenido.querySelector(".cerrar");
-        const mensaje = contenido.querySelector("#mensaje");
-
-        cerrar.addEventListener("click", ()=> modal.style.display="none");
-
-        formEditar.addEventListener("submit", async function(e){
-            e.preventDefault();
-            const formData = new FormData(this);
-            const resUpdate = await fetch("update_medico.php",{ method:"POST", body: formData });
-            const data = await resUpdate.json();
-            mensaje.style.display="block";
-
-            if(data.status==="success"){
-                mensaje.style.backgroundColor="#d4edda";
-                mensaje.style.color="#155724";
-                mensaje.textContent="✅ "+data.message;
-                cargarMedicos();
-                setTimeout(()=> modal.style.display="none",1500);
-            } else {
-                mensaje.style.backgroundColor="#f8d7da";
-                mensaje.style.color="#721c24";
-                mensaje.textContent="❌ "+data.message;
-            }
-        });
-
-    } catch(error){
-        console.error(error);
-        alert("Error al cargar el formulario de edición.");
-    }
-}
-
-// Eliminar médico
-async function eliminarMedico(id){
-    if(!confirm("¿Seguro que deseas eliminar este médico?")) return;
-
-    try {
-        const res = await fetch(`delete.php?id=${id}`);
+    // Cargar médicos
+    async function cargarMedicos() {
+        const res = await fetch("get_medicos.php");
         const data = await res.json();
-        if(data.status==="success"){
-            const fila = document.getElementById("fila-"+id);
-            if(fila) fila.remove();
-        } else {
-            alert(data.message);
-        }
-    } catch(error){
-        console.error(error);
-        alert("Error al eliminar médico");
+        const tabla = document.querySelector("#tabla-medicos");
+        tabla.innerHTML = "";
+
+        data.forEach(m => {
+            const tr = document.createElement("tr");
+            tr.id = "fila-" + m.id;
+            tr.innerHTML = `
+                <td>${m.nombre}</td>
+                <td>${m.especialidad}</td>
+                <td>${m.telefono}</td>
+                <td>${m.correo}</td>
+                <?php if ($_SESSION['rol'] === 'admin') { ?>
+                <td>
+                    <button class="btn btn-editar" onclick="abrirModalEditar(${m.id})">Editar</button>
+                    <button class="btn btn-eliminar" onclick="eliminarMedico(${m.id})">Eliminar</button>
+                </td>
+                <?php } ?>
+            `;
+            tabla.appendChild(tr);
+        });
     }
-}
+
+    cargarMedicos();
+
+    // Modal Insertar
+    function abrirModalInsertar(){ document.getElementById("modalInsertar").style.display="flex"; }
+    function cerrarModalInsertar(){ document.getElementById("modalInsertar").style.display="none"; }
+
+    // Insertar médico
+    const formInsertar = document.getElementById("formInsertar");
+    formInsertar.addEventListener("submit", async function(e){
+        e.preventDefault();
+        console.log("Formulario enviado"); // Para depuración
+
+        const formData = new FormData(this);
+        const res = await fetch("insertar_medico.php",{ method:"POST", body: formData });
+        const data = await res.json();
+        const msg = document.getElementById("mensajeInsertar");
+        msg.style.display="block";
+
+        if(data.status==="success"){
+            msg.style.backgroundColor="#d4edda";
+            msg.style.color="#155724";
+            msg.textContent="✅ "+data.message;
+            this.reset();
+            cargarMedicos();
+            setTimeout(()=>{ msg.style.display="none"; cerrarModalInsertar(); },1500);
+        } else {
+            msg.style.backgroundColor="#f8d7da";
+            msg.style.color="#721c24";
+            msg.textContent="❌ "+data.message;
+        }
+    });
+
+    // Modal Editar
+    window.abrirModalEditar = async function(id){
+        const modal = document.getElementById("modalEditar");
+        const contenido = document.getElementById("contenidoEditar");
+
+        try {
+            const res = await fetch(`form_editar_medico.php?id=${id}`);
+            const html = await res.text();
+            contenido.innerHTML = html;
+            modal.style.display="flex";
+
+            const formEditar = contenido.querySelector("#formEditar");
+            const cerrar = contenido.querySelector(".cerrar");
+            const mensaje = contenido.querySelector("#mensaje");
+
+            cerrar.addEventListener("click", ()=> modal.style.display="none");
+
+            formEditar.addEventListener("submit", async function(e){
+                e.preventDefault();
+                const formData = new FormData(this);
+                const resUpdate = await fetch("update_medico.php",{ method:"POST", body: formData });
+                const data = await resUpdate.json();
+                mensaje.style.display="block";
+
+                if(data.status==="success"){
+                    mensaje.style.backgroundColor="#d4edda";
+                    mensaje.style.color="#155724";
+                    mensaje.textContent="✅ "+data.message;
+                    cargarMedicos();
+                    setTimeout(()=> modal.style.display="none",1500);
+                } else {
+                    mensaje.style.backgroundColor="#f8d7da";
+                    mensaje.style.color="#721c24";
+                    mensaje.textContent="❌ "+data.message;
+                }
+            });
+
+        } catch(error){
+            console.error(error);
+            alert("Error al cargar el formulario de edición.");
+        }
+    }
+
+    // Eliminar médico
+    window.eliminarMedico = async function(id){
+        if(!confirm("¿Seguro que deseas eliminar este médico?")) return;
+
+        try {
+            const res = await fetch(`delete_medico.php?id=${id}`);
+            const data = await res.json();
+            if(data.status==="success"){
+                const fila = document.getElementById("fila-"+id);
+                if(fila) fila.remove();
+            } else {
+                alert(data.message);
+            }
+        } catch(error){
+            console.error(error);
+            alert("Error al eliminar médico");
+        }
+    }
+
+    window.abrirModalInsertar = abrirModalInsertar;
+    window.cerrarModalInsertar = cerrarModalInsertar;
+});
 </script>
 
 </body>
